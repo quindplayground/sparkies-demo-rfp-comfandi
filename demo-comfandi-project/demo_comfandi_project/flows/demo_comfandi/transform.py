@@ -1,23 +1,17 @@
-"""Template transform module for data flow.
+"""Transform module for demo_comfandi data flow.
 
-This module handles data transformation logic. Transformations can be simple
-(for basic flows) or complex with multiple steps (for advanced flows).
-
-The transformation pipeline typically includes:
-- Data cleaning and normalization
-- Type casting and validation
-- Joins with reference tables
-- Aggregations and calculations
-- Business logic application
-
-Transformations are organized as a series of steps that can be executed
-sequentially. Each step should be focused on a single transformation concern.
+This module handles data transformation logic for the demo_comfandi flow.
 """
 
 from pyspark.sql import DataFrame, SparkSession
+from pyspark.sql import functions as sf
 
+from demo_comfandi_project.libs.common_patterns import current_timestamp_with_tz
 from demo_comfandi_project.libs.error_handler import handle_errors
+from demo_comfandi_project.libs.logging import get_logger
 from demo_comfandi_project.libs.resources import VarsResource
+
+logger = get_logger(__name__)
 
 
 @handle_errors
@@ -30,89 +24,76 @@ def transform(
 ) -> DataFrame:
     """Transform data through transformation pipeline.
 
-    This function orchestrates all transformation steps for the flow. It receives
-    the extracted data and applies a series of transformations to prepare it
-    for loading based on your specific business requirements.
-
     Args:
         job_id: Unique identifier for this job execution (for logging).
         spark: SparkSession for data processing.
         vars_instance: VarsResource instance with configuration.
         extracted_data: Input DataFrame from extraction step.
         **kwargs: Optional parameters based on flow requirements.
-            Only add parameters if your flow specifically requires them.
-            Examples: first_run, incremental, etc.
 
     Returns:
         Fully transformed DataFrame ready for loading.
-
-    Raises:
-        NotImplementedError: This function must be implemented for your specific flow.
-
-    Example:
-        Simple transformation pipeline:
-        ```python
-        from pyspark.sql import functions as sf
-        from demo_comfandi_project.libs.logging import get_logger
-
-        logger = get_logger(__name__)
-
-        # Step 1: Clean data
-        cleaned = extracted_data.dropDuplicates()
-
-        # Step 2: Cast types
-        typed = cleaned.withColumn("date_col", sf.col("date_col").cast("date"))
-
-        # Step 3: Add metadata
-        from demo_comfandi_project.libs.common_patterns import current_timestamp_with_tz
-        final = typed.withColumn(
-            "current_timestamp_dwh",
-            current_timestamp_with_tz("yyyy-MM-dd HH:mm:ss", "America/Bogota")
-        )
-
-        return final
-        ```
-
-        Complex transformation with multiple steps:
-        ```python
-        # Import step functions
-        from demo_comfandi_project.flows.your_flow.steps import (
-            step_100_clean_data,
-            step_200_cast_types,
-            step_300_join_reference,
-            step_400_aggregate
-        )
-
-        # Execute steps sequentially
-        step_100 = step_100_clean_data(extracted_data)
-        step_200 = step_200_cast_types(step_100)
-        step_300 = step_300_join_reference(spark, vars_instance, step_200)
-        step_400 = step_400_aggregate(step_300)
-
-        return step_400
-        ```
-
-        Transformation with optional parameters (if flow requires):
-        ```python
-        # Only add parameters if your flow specifically needs them
-        first_run = kwargs.get("first_run", True)
-        if first_run:
-            # Full transformation logic
-            return full_transform(extracted_data)
-        else:
-            # Incremental transformation logic
-            return incremental_transform(extracted_data)
-        ```
-
-    Note:
-        - Organize complex transformations into separate step functions
-        - Place step functions in the `steps/` directory
-        - Use logging to track transformation progress
-        - Only add parameters (like first_run) if the flow specifically requires them
-        - Implement transformations based on your business requirements
     """
-    raise NotImplementedError(
-        "Transform function must be implemented. "
-        "Implement your transformation logic based on your business requirements. "
-        "See function docstring for examples."
+    input_table_id = vars_instance.vars.input.table_id
+    output_table_id = vars_instance.vars.output.table_id
+
+    logger.info(
+        "Transformation started",
+        extra={
+            "attributes": {
+                "job_id": job_id,
+                "input_table_id": input_table_id,
+                "output_table_id": output_table_id,
+            }
+        },
     )
+
+    # Step 1: Clean data - remove duplicates
+    # TODO(user): Define deduplication columns based on business requirements
+    # Example: cleaned = extracted_data.dropDuplicates(["key_column"])
+    cleaned = extracted_data.dropDuplicates()
+
+    # Step 2: Cast types
+    # TODO(user): Define type casting rules based on input schema and requirements
+    # Example:
+    # typed = cleaned.withColumn("date_col", sf.col("date_col").cast("date"))
+    # typed = typed.withColumn("numeric_col", sf.col("numeric_col").cast("decimal(18,2)"))
+    typed = cleaned
+
+    # Step 3: Apply business logic transformations
+    # TODO(user): Implement business logic transformations according to requirements
+    # Examples:
+    # - Normalize string columns: sf.upper(sf.trim(sf.col("name")))
+    # - Calculate derived columns: sf.col("price") * sf.col("quantity")
+    # - Apply filters: .filter(sf.col("status") == "active")
+    transformed = typed
+
+    # Step 4: Join with reference tables (if needed)
+    # TODO(user): Implement joins with reference tables if required
+    # Example:
+    # reference_table = spark.table(vars_instance.vars.input.reference_table_id)
+    # enriched = transformed.join(
+    #     reference_table,
+    #     transformed["key"] == reference_table["key"],
+    #     "left"
+    # )
+    enriched = transformed
+
+    # Step 5: Add metadata columns
+    final = enriched.withColumn(
+        "current_timestamp_dwh",
+        current_timestamp_with_tz("yyyy-MM-dd HH:mm:ss", "America/Bogota")
+    )
+
+    logger.info(
+        "Transformation completed",
+        extra={
+            "attributes": {
+                "job_id": job_id,
+                "input_table_id": input_table_id,
+                "output_table_id": output_table_id,
+            }
+        },
+    )
+
+    return final

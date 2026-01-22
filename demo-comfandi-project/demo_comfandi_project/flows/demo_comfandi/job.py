@@ -1,20 +1,9 @@
-"""Template job for data flow.
-
-This is a template that demonstrates the standard pattern for data flows.
-Copy this directory and rename it to create a new flow.
+"""Job module for demo_comfandi data flow.
 
 This job orchestrates the ETL pipeline:
 1. Extract: Reads data from source
 2. Transform: Applies transformations
 3. Load: Writes to target
-
-This template is storage-agnostic and can work with various storage systems
-(Iceberg, Delta Lake, Parquet files, databases, DynamoDB, etc.). The ETL modules
-(extract.py, transform.py, load.py) must be implemented based on your
-specific storage system and requirements.
-
-Any flow-specific logic (state tracking, change detection, restart, etc.) should
-only be implemented if your flow specifically requires it, based on your requirements.
 """
 
 import time
@@ -30,55 +19,22 @@ from demo_comfandi_project.libs.runner.types import Status
 
 
 def demo_comfandi_job(spark: SparkSession, vars_instance: VarsResource) -> Status:
-    """Template job function for data flow processing.
+    """Orchestrate the demo_comfandi ETL pipeline.
 
     This function orchestrates the ETL pipeline by calling extract, transform,
     and load functions in sequence. It provides structured logging and error
     handling throughout the process.
-
-    The actual extraction, transformation, and loading logic is implemented
-    in the respective modules (extract.py, transform.py, load.py).
-
-    Any flow-specific orchestration logic (state tracking, change detection,
-    restart, etc.) should only be added if your flow specifically requires it,
-    based on your requirements.
 
     Args:
         spark: SparkSession for data processing.
         vars_instance: VarsResource instance with configuration loaded from
             config/default.toml. Contains all flow configuration including:
             - Input/output table IDs
-            - Flow-specific configuration (only what your flow requires)
+            - Flow-specific configuration
             - Partitioning settings
 
     Returns:
         Status object indicating job completion status.
-
-    Example:
-        ```python
-        from demo_comfandi_project.libs.resources import get_vars_resource
-
-        # Load configuration
-        vars_instance = get_vars_resource(
-            env="dev",
-            config_paths=["flows/your_flow_name/config/default.toml"]
-        )
-
-        # Execute job
-        status = template_flow_job(spark, vars_instance)
-
-        if status.status_value == "OK":
-            print("Job completed successfully")
-        else:
-            print(f"Job failed: {status.message}")
-        ```
-
-    Note:
-        - Rename this function to match your flow name
-        - Update operation names in logging attributes
-        - Implement extract(), transform(), and load() functions
-        - Only add flow-specific logic (state tracking, change detection, etc.) if required
-        - Configure flow-specific settings in config/default.toml based on requirements
     """
     logger = get_logger(__name__)
 
@@ -117,12 +73,6 @@ def demo_comfandi_job(spark: SparkSession, vars_instance: VarsResource) -> Statu
         },
     )
 
-    # Extract data
-    # Add any flow-specific parameters here only if your flow requires them
-    # Example: if flow requires first_run detection:
-    #   first_run = is_empty(spark, vars_instance.vars.output.table_id)
-    #   extracted_data = extract(spark=spark, vars_instance=vars_instance, first_run=first_run)
-    # Otherwise, use:
     extracted_data = extract(
         spark=spark,
         vars_instance=vars_instance,
@@ -154,8 +104,6 @@ def demo_comfandi_job(spark: SparkSession, vars_instance: VarsResource) -> Statu
         },
     )
 
-    # Transform data
-    # Add any flow-specific parameters here only if your flow requires them
     transformed_data = transform(
         job_id=job_id,
         spark=spark,
@@ -189,8 +137,6 @@ def demo_comfandi_job(spark: SparkSession, vars_instance: VarsResource) -> Statu
         },
     )
 
-    # Load data
-    # Add any flow-specific parameters here only if your flow requires them
     load(
         job_id=job_id,
         spark=spark,

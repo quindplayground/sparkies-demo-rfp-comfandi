@@ -1,0 +1,641 @@
+# Example Data Contract - Based on ODCS v3.0.2
+# Open Data Contract Standard: https://datacontract.com/docs/datacontract-specification/
+
+info:
+  title: "Customer Portfolio Data Contract"
+  version: "1.0.0"
+  owner: "data-engineering-team@example.com"
+  description: |
+    This data contract defines the schema and quality requirements for the customer portfolio dataset.
+    The dataset contains consolidated product offerings available to customers, including eligibility
+    rules and commercial data.
+
+  type: "table"
+  domain: "commercial"
+  dataClassification: "internal"
+  
+  tags:
+    - "customer-data"
+    - "portfolio"
+    - "commercial"
+    - "analytics"
+
+  labels:
+    environment: "production"
+    layer: "analytics"
+    team: "data-engineering"
+
+  contact:
+    technical:
+      name: "Data Engineering Team"
+      email: "data-engineering@example.com"
+      slack: "#data-engineering"
+    business:
+      name: "Commercial Analytics Team"
+      email: "commercial-analytics@example.com"
+
+  links:
+    - type: "documentation"
+      url: "https://wiki.example.com/data/customer-portfolio"
+    - type: "slack"
+      url: "https://example.slack.com/archives/data-engineering"
+    - type: "quality-dashboard"
+      url: "https://monitoring.example.com/datasets/customer-portfolio"
+
+  examples:
+    - type: "json"
+      description: "Sample customer portfolio record"
+      data: |
+        {
+          "customer_id": "CUST-12345",
+          "material_code": "MAT-67890",
+          "vendor_id": "VEND-001",
+          "is_eligible": true,
+          "eligibility_reason": "Active customer with valid contract",
+          "price": 1250.50,
+          "currency": "USD",
+          "discount_percentage": 10.0,
+          "tax_rate": 19.0,
+          "last_updated": "2025-01-15T10:30:00Z"
+        }
+
+schema:
+  type: "struct"
+  fields:
+    - name: "customer_id"
+      type: "string"
+      description: "Unique identifier for the customer"
+      required: true
+      classification: "identifier"
+      pii: false
+      quality:
+        uniqueness: "must"
+        checks:
+          - type: "not_null"
+          - type: "pattern"
+            value: "^CUST-[0-9]{5}$"
+          - type: "min_length"
+            value: 10
+          - type: "max_length"
+            value: 15
+      examples:
+        - "CUST-12345"
+        - "CUST-67890"
+
+    - name: "material_code"
+      type: "string"
+      description: "Product material code"
+      required: true
+      classification: "identifier"
+      pii: false
+      quality:
+        checks:
+          - type: "not_null"
+          - type: "pattern"
+            value: "^MAT-[0-9]{5}$"
+          - type: "min_length"
+            value: 8
+          - type: "max_length"
+            value: 12
+      examples:
+        - "MAT-12345"
+        - "MAT-67890"
+
+    - name: "vendor_id"
+      type: "string"
+      description: "Vendor identifier who offers this material"
+      required: true
+      classification: "identifier"
+      pii: false
+      quality:
+        checks:
+          - type: "not_null"
+          - type: "pattern"
+            value: "^VEND-[0-9]{3}$"
+      examples:
+        - "VEND-001"
+        - "VEND-123"
+
+    - name: "is_eligible"
+      type: "boolean"
+      description: "Whether this material-vendor combination is eligible for the customer"
+      required: true
+      classification: "business"
+      pii: false
+      quality:
+        checks:
+          - type: "not_null"
+      examples:
+        - true
+        - false
+
+    - name: "eligibility_reason"
+      type: "string"
+      description: "Reason code or description for eligibility status"
+      required: false
+      classification: "business"
+      pii: false
+      quality:
+        checks:
+          - type: "max_length"
+            value: 500
+      examples:
+        - "Active customer with valid contract"
+        - "Geographic availability"
+        - "Product category restriction"
+
+    - name: "price"
+      type: "decimal"
+      description: "Unit price for the material"
+      required: true
+      classification: "financial"
+      pii: false
+      format: "decimal(10,2)"
+      quality:
+        checks:
+          - type: "not_null"
+          - type: "min"
+            value: 0
+          - type: "max"
+            value: 9999999.99
+      examples:
+        - 1250.50
+        - 0.99
+        - 50000.00
+
+    - name: "currency"
+      type: "string"
+      description: "ISO 4217 currency code"
+      required: true
+      classification: "financial"
+      pii: false
+      quality:
+        checks:
+          - type: "not_null"
+          - type: "enum"
+            values: ["USD", "EUR", "COP", "MXN"]
+          - type: "length"
+            value: 3
+      examples:
+        - "USD"
+        - "EUR"
+        - "COP"
+
+    - name: "discount_percentage"
+      type: "decimal"
+      description: "Applied discount percentage (0-100)"
+      required: true
+      classification: "financial"
+      pii: false
+      format: "decimal(5,2)"
+      quality:
+        checks:
+          - type: "not_null"
+          - type: "min"
+            value: 0
+          - type: "max"
+            value: 100
+      examples:
+        - 0.0
+        - 10.5
+        - 25.0
+
+    - name: "tax_rate"
+      type: "decimal"
+      description: "Tax rate percentage (e.g., VAT, sales tax)"
+      required: true
+      classification: "financial"
+      pii: false
+      format: "decimal(5,2)"
+      quality:
+        checks:
+          - type: "not_null"
+          - type: "min"
+            value: 0
+          - type: "max"
+            value: 100
+      examples:
+        - 0.0
+        - 19.0
+        - 21.0
+
+    - name: "last_updated"
+      type: "timestamp"
+      description: "Timestamp of last update in ISO 8601 format (UTC)"
+      required: true
+      classification: "metadata"
+      pii: false
+      format: "timestamp"
+      quality:
+        checks:
+          - type: "not_null"
+          - type: "format"
+            value: "iso8601"
+      examples:
+        - "2025-01-15T10:30:00Z"
+        - "2025-01-15T14:22:33Z"
+
+  # Relationships and constraints
+  constraints:
+    primaryKey:
+      - "customer_id"
+      - "material_code"
+      - "vendor_id"
+    
+    foreignKeys:
+      - fields: ["customer_id"]
+        reference:
+          dataset: "customers"
+          fields: ["customer_id"]
+      
+      - fields: ["material_code"]
+        reference:
+          dataset: "materials"
+          fields: ["material_code"]
+      
+      - fields: ["vendor_id"]
+        reference:
+          dataset: "vendors"
+          fields: ["vendor_id"]
+
+    indexes:
+      - fields: ["customer_id"]
+        description: "Index for customer-based queries"
+      - fields: ["material_code", "vendor_id"]
+        description: "Composite index for material-vendor lookups"
+      - fields: ["is_eligible"]
+        description: "Index for filtering eligible products"
+
+  # Partitioning strategy
+  partitioning:
+    type: "date"
+    field: "last_updated"
+    granularity: "day"
+    description: "Partitioned by date for efficient time-based queries"
+
+  # Data retention
+  retention:
+    period: "P2Y"
+    description: "Data retained for 2 years"
+    archiveAfter: "P1Y"
+    description: "Data archived after 1 year"
+
+quality:
+  freshness:
+    description: "Data should be updated at least twice daily"
+    cron: "0 2,14 * * *"
+    maxAge: "PT12H"
+    alert:
+      type: "slack"
+      channel: "#data-alerts"
+      severity: "warning"
+
+  volume:
+    description: "Expected record count per day"
+    min: 100000
+    max: 10000000
+    alert:
+      type: "slack"
+      channel: "#data-alerts"
+      severity: "error"
+
+  schema:
+    description: "Schema evolution policy"
+    evolution: "additive"
+    breakingChanges: "forbidden"
+    alert:
+      type: "email"
+      recipients:
+        - "data-engineering@example.com"
+      severity: "critical"
+
+  # Data quality checks
+  checks:
+    - type: "completeness"
+      field: "customer_id"
+      threshold: 1.0
+      description: "Customer ID must be 100% complete"
+    
+    - type: "completeness"
+      field: "price"
+      threshold: 0.99
+      description: "Price must be at least 99% complete"
+    
+    - type: "validity"
+      field: "currency"
+      validValues: ["USD", "EUR", "COP", "MXN"]
+      threshold: 1.0
+      description: "Currency must be a valid ISO 4217 code"
+    
+    - type: "uniqueness"
+      fields: ["customer_id", "material_code", "vendor_id"]
+      threshold: 1.0
+      description: "Combination of customer, material, and vendor must be unique"
+    
+    - type: "custom"
+      name: "eligibility_consistency"
+      description: "If is_eligible is false, eligibility_reason should not be empty"
+      sql: |
+        SELECT COUNT(*) 
+        FROM dataset 
+        WHERE is_eligible = false 
+          AND (eligibility_reason IS NULL OR eligibility_reason = '')
+      threshold: 0
+      severity: "error"
+    
+    - type: "custom"
+      name: "price_positive"
+      description: "Price must be positive when is_eligible is true"
+      sql: |
+        SELECT COUNT(*) 
+        FROM dataset 
+        WHERE is_eligible = true 
+          AND price <= 0
+      threshold: 0
+      severity: "error"
+
+  # Data quality SLAs
+  slas:
+    - metric: "freshness"
+      target: "PT12H"
+      severity: "warning"
+    
+    - metric: "completeness"
+      target: 0.99
+      severity: "error"
+    
+    - metric: "validity"
+      target: 0.99
+      severity: "error"
+    
+    - metric: "uniqueness"
+      target: 1.0
+      severity: "error"
+
+terms:
+  usage:
+    description: |
+      This dataset is intended for:
+      - Commercial analytics and reporting
+      - Product eligibility queries
+      - Pricing and discount calculations
+      - Customer portfolio analysis
+    
+    restrictions:
+      - "Data must not be used for direct marketing without customer consent"
+      - "Financial data is confidential and must be handled according to company policy"
+      - "Data should not be exported to unapproved systems"
+    
+    license: "internal-use-only"
+    retention: "P2Y"
+
+  availability:
+    description: "Dataset availability and SLAs"
+    sla: "99.5%"
+    maintenanceWindow: "Sunday 02:00-04:00 UTC"
+    supportHours: "Monday-Friday 09:00-17:00 UTC"
+    contact: "data-engineering@example.com"
+
+  lifecycle:
+    description: "Data lifecycle management"
+    stages:
+      - stage: "development"
+        description: "Initial development and testing"
+        duration: "P1M"
+      
+      - stage: "staging"
+        description: "Pre-production validation"
+        duration: "P2W"
+      
+      - stage: "production"
+        description: "Live production data"
+        duration: "P2Y"
+      
+      - stage: "deprecated"
+        description: "Scheduled for retirement"
+        duration: "P6M"
+
+  # Change management
+  changeManagement:
+    breakingChanges: "forbidden"
+    versioning: "semantic"
+    deprecationPolicy: "P6M"
+    migrationGuide: "https://wiki.example.com/data/customer-portfolio/migration"
+
+  # Service level objectives
+  slos:
+    - metric: "freshness"
+      target: "PT12H"
+      measurement: "p95"
+      description: "95% of data updates should be within 12 hours"
+    
+    - metric: "availability"
+      target: 0.995
+      measurement: "monthly"
+      description: "99.5% monthly availability"
+    
+    - metric: "latency"
+      target: "PT1S"
+      measurement: "p99"
+      description: "99th percentile query latency under 1 second"
+
+serving:
+  # Data access patterns
+  access:
+    - type: "api"
+      description: "REST API for real-time queries"
+      endpoint: "https://api.example.com/v1/customer-portfolio"
+      authentication: "oauth2"
+      rateLimit: "1000 requests/hour"
+      documentation: "https://api-docs.example.com/customer-portfolio"
+    
+    - type: "sql"
+      description: "SQL queries via data catalog"
+      endpoint: "athena://analytics/customer_portfolio"
+      authentication: "iam"
+      documentation: "https://wiki.example.com/data/customer-portfolio/queries"
+    
+    - type: "file"
+      description: "Batch exports to S3"
+      location: "s3://analytics-bucket/customer-portfolio/"
+      format: "parquet"
+      frequency: "daily"
+      authentication: "iam"
+
+  # Data formats
+  formats:
+    - type: "parquet"
+      description: "Primary storage format"
+      compression: "snappy"
+      schemaEvolution: true
+    
+    - type: "iceberg"
+      description: "Table format for analytics"
+      version: "v2"
+      timeTravel: true
+    
+    - type: "json"
+      description: "API response format"
+      schema: "https://api-docs.example.com/schemas/customer-portfolio.json"
+
+  # Performance characteristics
+  performance:
+    expectedQueriesPerSecond: 100
+    expectedLatencyP50: "PT100MS"
+    expectedLatencyP95: "PT500MS"
+    expectedLatencyP99: "PT1S"
+    caching:
+      enabled: true
+      ttl: "PT5M"
+      strategy: "lru"
+
+  # Data location
+  location:
+    primary:
+      type: "s3"
+      bucket: "analytics-bucket"
+      path: "customer-portfolio/"
+      region: "us-east-1"
+    
+    catalog:
+      type: "glue"
+      database: "analytics"
+      table: "customer_portfolio"
+      region: "us-east-1"
+
+lineage:
+  # Data sources
+  sources:
+    - name: "customer_master"
+      type: "table"
+      location: "s3://raw-bucket/customer-master/"
+      description: "Master customer data"
+      frequency: "daily"
+    
+    - name: "material_catalog"
+      type: "table"
+      location: "s3://raw-bucket/material-catalog/"
+      description: "Product material catalog"
+      frequency: "daily"
+    
+    - name: "vendor_products"
+      type: "table"
+      location: "s3://raw-bucket/vendor-products/"
+      description: "Vendor product offerings"
+      frequency: "daily"
+    
+    - name: "commercial_rules"
+      type: "table"
+      location: "s3://raw-bucket/commercial-rules/"
+      description: "Business rules for eligibility and pricing"
+      frequency: "weekly"
+
+  # Transformations
+  transformations:
+    - name: "portfolio_calculation"
+      type: "spark_job"
+      description: "Calculates customer portfolio eligibility"
+      location: "s3://code-bucket/jobs/portfolio-calculation/"
+      inputs:
+        - "customer_master"
+        - "material_catalog"
+        - "vendor_products"
+        - "commercial_rules"
+      outputs:
+        - "customer_portfolio"
+    
+    - name: "commercial_data_enrichment"
+      type: "spark_job"
+      description: "Enriches portfolio with pricing and discount data"
+      location: "s3://code-bucket/jobs/commercial-enrichment/"
+      inputs:
+        - "customer_portfolio"
+        - "pricing_rules"
+      outputs:
+        - "customer_portfolio"
+
+  # Data consumers
+  consumers:
+    - name: "commercial_analytics_dashboard"
+      type: "application"
+      description: "Analytics dashboard for commercial team"
+      frequency: "real-time"
+    
+    - name: "pricing_api"
+      type: "api"
+      description: "API for real-time pricing queries"
+      frequency: "real-time"
+    
+    - name: "reporting_system"
+      type: "application"
+      description: "Batch reporting system"
+      frequency: "daily"
+
+  # Data flow diagram
+  flow:
+    - step: 1
+      process: "Extract customer master data"
+      input: "customer_master"
+      output: "staged_customers"
+    
+    - step: 2
+      process: "Extract material catalog"
+      input: "material_catalog"
+      output: "staged_materials"
+    
+    - step: 3
+      process: "Extract vendor products"
+      input: "vendor_products"
+      output: "staged_vendors"
+    
+    - step: 4
+      process: "Apply eligibility rules"
+      inputs:
+        - "staged_customers"
+        - "staged_materials"
+        - "staged_vendors"
+        - "commercial_rules"
+      output: "eligible_portfolio"
+    
+    - step: 5
+      process: "Enrich with commercial data"
+      input: "eligible_portfolio"
+      output: "customer_portfolio"
+
+# Metadata
+metadata:
+  created: "2025-01-15T10:00:00Z"
+  lastModified: "2025-01-15T10:00:00Z"
+  createdBy: "data-engineering-team@example.com"
+  lastModifiedBy: "data-engineering-team@example.com"
+  
+  # Compliance and governance
+  compliance:
+    - standard: "GDPR"
+      applicable: false
+      reason: "No personal data in this dataset"
+    
+    - standard: "SOC2"
+      applicable: true
+      controls: ["encryption", "access-control", "audit-logging"]
+    
+    - standard: "PCI-DSS"
+      applicable: false
+      reason: "No payment card data"
+  
+  # Data classification
+  classification:
+    sensitivity: "internal"
+    confidentiality: "confidential"
+    integrity: "high"
+    availability: "high"
+  
+  # Tags for discovery
+  tags:
+    - "customer"
+    - "portfolio"
+    - "commercial"
+    - "analytics"
+    - "pricing"
+    - "eligibility"
+

@@ -1,75 +1,82 @@
 import os
+import argparse
+import sys
 
-# Import your job functions here
-# from demo_comfandi_project.flows.stage.your_flow.job import your_job_function
+# IMPORTAMOS TU JOB REAL
+from demo_comfandi_project.flows.demo_comfandi.job import demo_comfandi_job
 
-from demo_comfandi_project.libs.args import get_args
 from demo_comfandi_project.libs.runner import JobRunner
 from demo_comfandi_project.libs.resources import get_vars_resource, SparkResource
 from demo_comfandi_project.libs.utils import get_package_resource_path
-from demo_comfandi_project.libs.aws.s3 import download_s3_folder_to_local
-from demo_comfandi_project.libs.validation import validate_json_parameters
-from demo_comfandi_project.libs.exceptions import ValidationError
 
+# Función auxiliar para parsear argumentos extra que manda Dataproc
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--env", default="dev")
+    parser.add_argument("--jobs", default="demo_comfandi")
+    # Estos son los nuevos argumentos que manda tu Cloud Function
+    parser.add_argument("--input_file", required=False)
+    parser.add_argument("--output_folder", required=False)
+    
+    # parse_known_args permite ignorar argumentos internos de Spark
+    args, _ = parser.parse_known_args()
+    return args
 
 if __name__ == "__main__":
-    # Set log level
     os.environ["LOG_LEVEL"] = "INFO"
 
-    # Initialize Spark Resource
-    # This resource manages the Spark session.
+    # 1. Inicializar Spark
     spark = SparkResource(new_session=True)
-
-    # Set checkpoint directory if needed
     spark.sparkContext.setCheckpointDir("hdfs:///tmp/local_checkpoints")
 
-    # Parse command line arguments
-    args = get_args()
+    # 2. Obtener Argumentos
+    args = parse_args()
+    print(f"🚀 Iniciando Spark Script. Input recibido: {args.input_file}")
 
-    # Get the path to the package resources
-    # Ensure 'demo_comfandi_project' matches your actual package name
-    root_path = get_package_resource_path("demo_comfandi_project")
+    # 3. Cargar Configuración Base (default.toml)
+    # Ajusta la ruta "flows/demo_comfandi/config" si tu carpeta se llama distinto
+    vars_instance = get_vars_resource(
+        env=args.env,
+        config_paths=["flows/demo_comfandi/config"] 
+    )
 
-    # Initialize Variables Resources
-    # Create a vars resource for each of your flows.
-    # This loads configuration from the specified paths.
+    # 4. INYECCIÓN DE DEPENDENCIAS (El Truco)
+    # Si recibimos un archivo, sobrescribimos la configuración en memoria
+    if args.input_file:
+        print(f"⚙️ Sobrescribiendo config input con: {args.input_file}")
+        
+        # Actualizamos el diccionario de configuración 'vars'
+        # Esto hace que vars_instance.vars.input.path exista
+        if "input" not in vars_instance.vars:
+            vars_instance.vars["input"] = {}
+            
+        vars_instance.vars["input"]["path"] = args.input_file
+        # Limpiamos table_id para que extract.py entre al IF correcto
+        vars_instance.vars["input"]["table_id"] = None
 
-    # Example:
-    # my_flow_vars = get_vars_resource(
-    #     env=args.env,
-    #     config_paths=[
-    #         "flows/stage/my_flow/config",
-    #         "parameters"
-    #     ]
-    # )
+    if args.output_folder:
+        if "output" not in vars_instance.vars:
+            vars_instance.vars["output"] = {}
+        vars_instance.vars["output"]["path"] = args.output_folder
 
-    # Define Jobs
-    # List all the jobs you want to run.
-    # Each job definition is a dictionary containing:
-    # - name: Unique name for the job
-    # - job: The job function to execute
-    # - args: Arguments to pass to the job function (usually spark and vars_instance)
-    # - depends_on: (Optional) List of job names that this job depends on
-
+    # 5. Definir Jobs
     job_defs = [
-        # {
-        #     "name": "my_flow_job",
-        #     "job": your_job_function,
-        #     "args": {
-        #         "spark": spark,
-        #         "vars_instance": my_flow_vars
-        #     },
-        #     # "depends_on": ["other_job"]
-        # },
+        {
+            "name": "demo_comfandi",  # Nombre del job
+            "job": demo_comfandi_job, # Tu función importada de job.py
+            "args": {
+                "spark": spark,
+                "vars_instance": vars_instance # Pasamos la config modificada
+            },
+        },
     ]
 
-    # Initialize JobRunner
+    # 6. Ejecutar
     runner = JobRunner(job_defs)
+    
+    # Si args.jobs viene vacío o es "all", ejecutamos el definido arriba
+    jobs_to_run = [args.jobs] if args.jobs else ["demo_comfandi"]
+    
+    result = runner.run(jobs_to_run, executor="sequential")
 
-    # Run jobs
-    # args.jobs specifies which jobs to run (or all if empty)
-    # executor="sequential" runs jobs one after another based on dependencies
-    result = runner.run(args.jobs, executor="sequential")
-
-    # Print result
     print(result.model_dump_json())

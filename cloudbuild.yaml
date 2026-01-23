@@ -1,0 +1,43 @@
+steps:
+  # -------------------------------------------------------------------------
+  # PASO A: Generar el paquete distribuible (.whl)
+  # -------------------------------------------------------------------------
+  - name: 'python:3.11'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "🛠️ Instalando herramientas de build..."
+        pip install build
+        
+        echo "📂 Entrando al directorio del paquete..."
+        # Entramos a la carpeta donde está el pyproject.toml
+        cd demo-comfandi-project
+        
+        echo "📦 Construyendo la librería Wheel..."
+        python -m build
+        # Esto generará el .whl dentro de demo-comfandi-project/dist/
+
+  # -------------------------------------------------------------------------
+  # PASO B: Subir artefactos a Google Cloud Storage
+  # -------------------------------------------------------------------------
+  - name: 'gcr.io/cloud-builders/gsutil'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "☁️ Subiendo archivos al bucket: ${_GCS_BUCKET}..."
+        
+        # 1. Subir el script principal (spark_script.py está en la raíz)
+        gsutil cp spark_script.py ${_GCS_BUCKET}/scripts/main.py
+        
+        # 2. Subir la librería (.whl está dentro de la subcarpeta dist)
+        gsutil cp demo-comfandi-project/dist/*.whl ${_GCS_BUCKET}/dependencies/latest_lib.whl
+
+# DEFINICIÓN DE VARIABLES (Se reemplazan al crear el trigger o aquí mismo)
+substitutions:
+  # GCP reemplazará esto automáticamente, pero dejamos un default por seguridad
+  _GCS_BUCKET: "gs://demo-rfp-comfandi-${PROJECT_ID}" 
+
+options:
+  logging: CLOUD_LOGGING_ONLY

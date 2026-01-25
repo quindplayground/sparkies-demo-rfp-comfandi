@@ -1,0 +1,442 @@
+# Spark Template Project
+
+Template reutilizable para proyectos de procesamiento de datos con Apache Spark y PySpark. Proporciona una estructura base, patrones de código, y herramientas de automatización para acelerar el desarrollo de flujos ETL.
+
+## ¿Qué es este Template?
+
+Este template es un proyecto base que incluye:
+
+- ✅ **Estructura de proyecto** estándar con organización clara
+- ✅ **Librerías reutilizables** para manejo de errores, logging, AWS, Iceberg, etc.
+- ✅ **Patrón de flujos ETL** agnóstico y configurable
+- ✅ **Scripts de automatización** para setup de proyectos e implementación de flujos
+- ✅ **Sistema de testing** con pytest y fixtures
+- ✅ **Configuración** con Dynaconf para múltiples ambientes
+- ✅ **Documentación** completa y ejemplos
+
+## ¿Qué se Puede Hacer?
+
+### ✅ Crear Nuevos Proyectos
+
+Usa el template para generar proyectos nuevos con tu propio nombre y configuración:
+
+```bash
+python .template/setup/setup.py --name mi-proyecto
+```
+
+Esto crea un proyecto completamente configurado con:
+- Directorios renombrados según tu proyecto
+- Imports actualizados automáticamente
+- Configuración de `pyproject.toml`
+- Archivos de licencia y documentación
+
+### ✅ Implementar Flujos de Datos
+
+Automatiza la implementación completa de flujos ETL usando comandos de Cursor:
+
+```bash
+.template/flows/scripts/orchestrate_flow.sh --requirements flow_requirements.md
+```
+
+Esto implementa automáticamente:
+- Módulos de extracción, transformación y carga
+- Configuración del flujo
+- Tests unitarios
+- Optimizaciones
+
+### ✅ Desplegar a la Nube
+
+Empaqueta y despliega tu proyecto a clusters EMR/Dataproc:
+
+```bash
+cd iac-refs/project
+./package.sh
+```
+
+### ✅ Extender y Personalizar
+
+- Agregar nuevas librerías en `libs/`
+- Crear nuevos flujos copiando el template
+- Personalizar configuración por ambiente
+- Agregar utilidades específicas del proyecto
+
+## ¿Qué NO se Debe Hacer?
+
+### ❌ Modificar el Template Directamente
+
+**NO modifiques** los archivos en `.template/` directamente. Estos son templates reutilizables.
+
+**✅ En su lugar:**
+- Usa los scripts de setup para crear proyectos nuevos
+- Copia y personaliza flujos desde `_template_flow`
+- Mantén el template original intacto
+
+### ❌ Asumir Comportamientos Específicos
+
+**NO asumas** que todos los flujos necesitan CDC, first_run, restart, etc.
+
+**✅ En su lugar:**
+- Implementa solo lo que los requerimientos especifiquen
+- Usa configuración agnóstica
+- Agrega lógica específica solo cuando sea necesario
+
+### ❌ Hardcodear Configuración
+
+**NO hardcodees** valores específicos en el código.
+
+**✅ En su lugar:**
+- Usa `config/default.toml` con Dynaconf
+- Usa variables de entorno
+- Configura por ambiente (dev, qa, prod)
+
+### ❌ Ignorar Tests
+
+**NO implementes** flujos sin tests.
+
+**✅ En su lugar:**
+- Crea tests unitarios para cada módulo
+- Ejecuta tests antes de hacer commit
+- Mantén cobertura de código alta
+
+## Estructura del Proyecto
+
+```
+.
+├── .template/                    # Templates y scripts de automatización
+│   ├── setup/                   # Scripts para crear nuevos proyectos
+│   │   ├── quind-ppd-project/    # Template del proyecto base
+│   │   ├── scripts/             # Scripts de setup
+│   │   └── spark_script.py      # Template de script Spark
+│   └── flows/                   # Scripts para implementar flujos
+│       ├── scripts/             # Script de orquestación
+│       └── EXAMPLE_REQUIREMENTS.md
+├── iac-refs/                    # Scripts de empaquetado y despliegue
+│   ├── project/                 # Scripts de empaquetado
+│   └── init_scripts/            # Scripts de inicialización para clusters
+├── .cursor/                     # Comandos de Cursor para automatización
+│   └── commands/                 # Comandos personalizados
+├── docs/                        # Documentación del proyecto
+└── README.md                    # Este archivo
+```
+
+## Cómo Empezar
+
+### Opción 1: Crear un Nuevo Proyecto desde el Template
+
+Si quieres crear un proyecto completamente nuevo:
+
+1. **Clonar o copiar este template**
+   ```bash
+   git clone <repo-url> mi-nuevo-proyecto
+   cd mi-nuevo-proyecto
+   ```
+
+2. **Ejecutar setup**
+   ```bash
+   python .template/setup/setup.py --name mi-proyecto --dry-run
+   python .template/setup/setup.py --name mi-proyecto
+   ```
+
+3. **Instalar dependencias**
+   ```bash
+   cd mi-proyecto-project
+   pip install -e .
+   ```
+
+4. **Verificar instalación**
+   ```bash
+   python -c "import mi_proyecto_project; print('OK')"
+   ```
+
+**Documentación completa:** [.template/setup/README.md](.template/setup/README.md)
+
+### Opción 2: Usar este Template como Base
+
+Si quieres usar este template como base para tu proyecto actual:
+
+1. **Explorar la estructura**
+   - Revisa `quind-ppd-project/` para entender la organización
+   - Lee `quind-ppd-project/REFERENCE.md` para documentación detallada
+
+2. **Copiar componentes necesarios**
+   - Copia librerías de `libs/` que necesites
+   - Copia el patrón de flujos de `flows/_template_flow/`
+
+3. **Adaptar a tu proyecto**
+   - Renombra según tu convención
+   - Ajusta configuración según tus necesidades
+
+## Flujo de Trabajo Recomendado
+
+### 1. Setup Inicial del Proyecto
+
+```bash
+# Crear proyecto desde template
+python .template/setup/setup.py --name mi-proyecto
+
+# Instalar dependencias
+cd mi-proyecto-project
+pip install -e .
+```
+
+### 2. Implementar un Flujo
+
+```bash
+# Crear archivo de requerimientos
+cp .template/flows/EXAMPLE_REQUIREMENTS.md requirements/mi_flujo.md
+# Editar requirements/mi_flujo.md con tus requerimientos
+
+# Verificar qué se ejecutará (dry-run)
+.template/flows/scripts/orchestrate_flow.sh \
+  --requirements requirements/mi_flujo.md \
+  --dry-run
+
+# Ejecutar implementación
+.template/flows/scripts/orchestrate_flow.sh \
+  --requirements requirements/mi_flujo.md
+```
+
+### 3. Desarrollar y Probar
+
+```bash
+# Ejecutar tests
+pytest quind_ppd_project_tests/ -v
+
+# Ejecutar flujo localmente
+python spark_script.py --flow mi_flujo
+```
+
+### 4. Empaquetar y Desplegar
+
+```bash
+# Empaquetar proyecto
+cd iac-refs/project
+export UPLOAD_TO_CLOUD=1
+export ARTIFACTS_BUCKET="my-bucket"
+export ARTIFACTS_PREFIX="assets/mi-proyecto"
+./package.sh
+
+# Usar en tu IaC (CloudFormation, Terraform, CDK, etc.)
+# El paquete estará en: s3://my-bucket/assets/mi-proyecto/dist/
+```
+
+## Documentación Detallada
+
+### Setup de Proyecto
+
+- **README:** [.template/setup/README.md](.template/setup/README.md)
+- **Uso:** Scripts para crear nuevos proyectos desde el template
+- **Características:** Renombrado automático, actualización de imports, configuración
+
+### Implementación de Flujos
+
+- **README:** [.template/flows/README.md](.template/flows/README.md)
+- **Uso:** Automatización de implementación de flujos ETL
+- **Características:** Orquestación con Cursor, tests automáticos, optimización
+
+### Empaquetado y Despliegue
+
+- **README:** [iac-refs/README.md](iac-refs/README.md)
+- **Uso:** Scripts para empaquetar y desplegar a la nube
+- **Características:** Soporte multi-nube, integración con IaC
+
+### Referencia del Proyecto
+
+- **REFERENCE.md:** Documentación técnica detallada (en `quind-ppd-project/REFERENCE.md` después del setup)
+- **Arquitectura:** Ver `docs/ARCHITECTURE.md` si existe
+- **Estándares de Desarrollo:** Ver `docs/ESTANDARES_DESARROLLO.md` para estándares completos de desarrollo
+
+## Características Principales
+
+### 🎯 Agnóstico y Flexible
+
+- No asume comportamientos específicos (CDC, restart, etc.)
+- Configuración basada en requerimientos explícitos
+- Soporte para múltiples sistemas de almacenamiento
+
+### 🔧 Automatización
+
+- Setup automático de proyectos
+- Implementación automatizada de flujos
+- Tests y optimización automáticos
+
+### 📦 Listo para Producción
+
+- Manejo de errores robusto
+- Logging estructurado
+- Configuración por ambiente
+- Tests unitarios completos
+
+### ☁️ Multi-Nube
+
+- Soporte para AWS, GCP, Azure
+- Scripts de despliegue agnósticos
+- Integración con cualquier framework de IaC
+
+## Requisitos
+
+- **Python:** 3.11+
+- **PySpark:** Incluido en el proyecto
+- **Cursor IDE:** Para automatización de flujos (opcional)
+- **Cloud CLI:** AWS CLI, gcloud, o az CLI (para despliegue)
+
+## Convenciones y Estándares
+
+### Naming
+
+- **Proyectos:** `kebab-case` para directorios (ej: `mi-proyecto-project`)
+- **Paquetes:** `snake_case` para Python (ej: `mi_proyecto_project`)
+- **Flujos:** `snake_case` (ej: `customers_bronze`)
+
+### Código
+
+- **Estilo:** Google Python Style Guide
+- **Type hints:** Requeridos en todas las funciones
+- **Docstrings:** Estilo Google en inglés
+- **Tests:** pytest con fixtures y mocks
+
+### Configuración
+
+- **Formato:** TOML con Dynaconf
+- **Estructura:** Nested sections (`[default.input]`, `[dev.input]`)
+- **Ambientes:** `default`, `dev`, `qa`, `prod`
+
+### Mantenimiento de Versión y Changelog
+
+El template mantiene dos archivos en la raíz para documentar versiones y cambios:
+
+#### VERSION.md
+
+**Propósito:** Documentar la versión actual del template y su historial.
+
+**Cuándo actualizar:**
+- Al lanzar una nueva versión del template
+- Al cambiar el estado de la versión (Development → Beta → Stable)
+- Al hacer cambios significativos en la estructura del template
+
+**Cómo actualizar:**
+1. Actualizar la sección "Current Version" con la nueva versión, fecha y estado
+2. Agregar una nueva fila en "Version History"
+3. Seguir el esquema de Semantic Versioning (MAJOR.MINOR.PATCH)
+4. Documentar los cambios en CHANGELOG.md
+
+**Ejemplo:**
+```markdown
+**Version:** 1.1.0
+**Release Date:** 2025-02-01
+**Status:** Beta
+```
+
+#### CHANGELOG.md
+
+**Propósito:** Registrar todos los cambios notables del template de forma estructurada.
+
+**Cuándo actualizar:**
+- Durante el desarrollo: agregar cambios bajo `[Sin Publicar]`
+- Al lanzar una versión: mover cambios de `[Sin Publicar]` a la nueva versión
+- Siempre que se agregue, modifique, deprecue, elimine, corrija o se haga un cambio de seguridad
+
+**Cómo actualizar:**
+1. **Durante desarrollo:**
+   - Agregar cambios bajo `[Sin Publicar]` en la categoría correspondiente:
+     - `### Agregado` - Nuevas funcionalidades
+     - `### Modificado` - Cambios en funcionalidad existente
+     - `### Deprecado` - Funcionalidades que serán eliminadas
+     - `### Eliminado` - Funcionalidades removidas
+     - `### Corregido` - Correcciones de errores
+     - `### Seguridad` - Correcciones de vulnerabilidades
+
+2. **Al lanzar una versión:**
+   - Crear una nueva sección `## [X.Y.Z] - YYYY-MM-DD`
+   - Mover todas las entradas de `[Sin Publicar]` a la nueva sección
+   - Limpiar la sección `[Sin Publicar]` (dejar vacía o con "Ningún cambio")
+   - Actualizar VERSION.md con la nueva versión
+
+**Formato de entradas:**
+- Usar viñetas (`-`) para cada cambio
+- Ser específico y claro
+- Vincular a issues o PRs cuando sea aplicable
+- Agrupar cambios relacionados
+
+**Ejemplo:**
+```markdown
+## [Sin Publicar]
+
+### Agregado
+- Nueva funcionalidad: Soporte para flujos de streaming
+- Nuevo comando Cursor: implement_streaming_flow.md
+
+### Modificado
+- Actualización del requisito de PySpark a 3.5.0
+- Mejora de mensajes de error en validación
+
+### Corregido
+- Resuelto problema con setup en Windows
+- Corregido parsing de configuración TOML anidada
+```
+
+**Mejores prácticas:**
+- ✅ Mantener el changelog actualizado durante el desarrollo
+- ✅ Usar descripciones claras y concisas
+- ✅ Agrupar cambios relacionados
+- ✅ Incluir contexto cuando sea necesario
+- ❌ No incluir cambios triviales o internos
+- ❌ No duplicar información del commit
+- ❌ No dejar secciones vacías sin comentario
+
+**Sincronización:**
+- VERSION.md y CHANGELOG.md deben estar sincronizados
+- La versión en VERSION.md debe coincidir con la última versión en CHANGELOG.md
+- Las fechas deben coincidir entre ambos archivos
+
+## Troubleshooting
+
+### Error: "Template not found"
+
+- Verifica que estés en la raíz del proyecto template
+- Asegúrate de que `.template/` exista y tenga la estructura correcta
+
+### Error: "Setup script failed"
+
+- Revisa los logs del script
+- Verifica permisos de escritura
+- Asegúrate de tener Python 3.11+ instalado
+
+### Error: "Flow implementation failed"
+
+- Revisa el archivo de requerimientos
+- Verifica que los comandos de Cursor existan
+- Revisa los outputs en `.template/flows/.temp_outputs/`
+
+### Error: "Package upload failed"
+
+- Verifica credenciales del cloud provider
+- Revisa que el bucket/contenedor exista
+- Verifica permisos de acceso
+
+## Contribuir
+
+Si quieres mejorar el template:
+
+1. **Mantén el template agnóstico** - No agregues lógica específica
+2. **Documenta cambios** - Actualiza READMEs relevantes
+3. **Prueba cambios** - Verifica que los scripts funcionen
+4. **Preserva compatibilidad** - No rompas funcionalidad existente
+
+## Notas Importantes
+
+- ⚠️ **NO modifiques `.template/` directamente** - Usa los scripts de setup
+- ⚠️ **NO asumas comportamientos** - Implementa solo lo requerido
+- ⚠️ **NO hardcodees valores** - Usa configuración
+- ✅ **Siempre crea tests** - Mantén cobertura alta
+- ✅ **Usa dry-run primero** - Verifica antes de ejecutar
+- ✅ **Documenta cambios** - Ayuda a otros desarrolladores
+
+## Licencia
+
+Ver `LICENSE` en el proyecto generado (configurado durante el setup).
+
+---
+
+**¿Necesitas ayuda?** Revisa la documentación detallada en cada sección o consulta los READMEs específicos.
+

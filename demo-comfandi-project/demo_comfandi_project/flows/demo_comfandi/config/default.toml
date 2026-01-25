@@ -1,0 +1,292 @@
+# Template configuration for data flow
+# Copy this file and customize it for your specific flow
+#
+# ============================================================================
+# CONFIGURATION SYSTEM: Dynaconf
+# ============================================================================
+# This configuration file uses Dynaconf for dynamic configuration management.
+# Dynaconf allows you to:
+# - Use environment variables and format strings
+# - Reference other configuration values
+# - Support multiple environments (dev, qa, prod)
+# - Validate configuration schemas
+#
+# Documentation: https://www.dynaconf.com/
+# Format strings: https://www.dynaconf.com/configuration/#format-string
+# Environment variables: https://www.dynaconf.com/envvars/
+#
+# ============================================================================
+# HOW VARIABLES ARE USED IN THE FLOW
+# ============================================================================
+# 1. Configuration is loaded via VarsResource:
+#    ```python
+#    from demo_comfandi_project.libs.resources import get_vars_resource
+#    vars_instance = get_vars_resource(
+#        env="dev",
+#        config_paths=["flows/your_flow/config/default.toml"]
+#    )
+#    ```
+#
+# 2. Variables are accessed in flow code:
+#    - vars_instance.vars.input.table_id
+#    - vars_instance.vars.output.table_id
+#    - vars_instance.vars.get("use_cdc", False)
+#    - vars_instance.vars.num_partitions.min_global
+#
+# 3. Format strings (@format) are resolved at load time:
+#    - Environment variables: {env[VARIABLE_NAME]}
+#    - Other config values: {this.section.key}
+#    - Example: "@format {env[GLUE_CATALOG_NAME]}.{this.stage_db}.table"
+#
+# ============================================================================
+# ENVIRONMENT VARIABLES
+# ============================================================================
+# These should be set in your deployment environment or cluster configuration.
+# Adjust variable names based on your infrastructure:
+# - GLUE_CATALOG_DB_STAGE: Database name for staging tables (example)
+# - ARTIFACTORY_BUCKET: S3 bucket for artifacts and error logs (example)
+# - GLUE_CATALOG_NAME: Name of the catalog (example, can be Iceberg, Delta, etc.)
+# - LOCAL_CATALOG_NAME: Name of the local catalog (example)
+#
+# ============================================================================
+# STORAGE SYSTEM AGNOSTIC
+# ============================================================================
+# This template is storage-agnostic and can work with various systems:
+# - Apache Iceberg: Utilities available in demo_comfandi_project.libs.iceberg
+# - Delta Lake: Use Delta Lake APIs directly
+# - Parquet Files: Read/write Parquet files directly
+# - Databases: JDBC connections
+# - Other systems: Implement custom logic as needed
+#
+# The CDC and merge configurations below are examples. Their implementation
+# depends on your chosen storage system. Iceberg utilities are available if
+# you choose to use Iceberg, but you're not limited to it.
+#
+# ============================================================================
+
+[default]
+# Environment variables are accessed using {env[VARIABLE_NAME]} syntax
+# These are resolved at configuration load time
+# Adjust variable names based on your infrastructure
+stage_db = "@format {env[GLUE_CATALOG_DB_STAGE]}"
+artifactory_bucket = "@format {env[ARTIFACTORY_BUCKET]}"
+dl_catalog = "@format {env[GLUE_CATALOG_NAME]}"
+local_catalog = "@format {env[LOCAL_CATALOG_NAME]}"
+local_db = "default"
+
+# Component configuration
+# This name is used for:
+# - Logging and error tracking
+# - Any flow-specific identifiers
+# - Restart configuration keys (if restart functionality is implemented)
+# - State tracking tags (if state tracking is implemented)
+# Example: "customers_bronze", "orders_silver", "sales_gold"
+component_name = "demo_comfandi"
+
+# ============================================================================
+# FLOW-SPECIFIC CONFIGURATION
+# ============================================================================
+# Add any flow-specific configuration flags here based on your requirements.
+# These are examples - only add what your flow actually needs.
+#
+# Examples of flow-specific flags (add only if needed):
+# - extraction_mode: "full" | "incremental" | "cdc"
+# - load_strategy: "overwrite" | "merge" | "append"
+# - enable_state_tracking: true | false
+# - enable_restart: true | false
+# - Any other flags your flow requires
+#
+# Note: Don't add flags unless your flow specifically requires them.
+# The implementation in extract.py, transform.py, load.py, and job.py
+# should determine what configuration is needed.
+
+# ============================================================================
+# INPUT CONFIGURATION (Global - shared across all environments)
+# ============================================================================
+# Defines the source data for extraction
+# Accessed as: vars_instance.vars.input.table_id
+# table_id can be: table name, file path, database connection string, etc.
+# 
+# Note: Use [default.input] for global input config, or [dev.input], [qa.input], 
+# [prod.input] for environment-specific overrides.
+[default.input]
+# Source identifier (adjust to your source)
+# Example: "raw_customers", "staging_orders", "/path/to/files", "jdbc:postgresql://..."
+# For this flow, source is the datos.gov.co API endpoint
+table_name = "datos_gov_co_api_ese3_e6sh"
+
+# Full source identifier using format strings to reference other config values
+# Format: {this.dl_catalog} references [default].dl_catalog
+#         {this.stage_db} references [default].stage_db
+#         {this.input.table_name} references [default.input].table_name
+# This creates: catalog.database.table_name (or path, connection string, etc.)
+# Example result: "iceberg_catalog.staging_db.example_source_table"
+#                 "/data/bronze/customers"
+#                 "jdbc:postgresql://host:5432/db.table"
+# For API source, this will be used as identifier in logs
+table_id = "@format {this.dl_catalog}.{this.stage_db}.{this.input.table_name}"
+
+# Path for error logs (used by error_handler)
+# Format string uses {this.artifactory_bucket} from [default] section
+error_path = "@format s3://{this.artifactory_bucket}/error_logs/"
+
+# ============================================================================
+# OUTPUT CONFIGURATION (Global - shared across all environments)
+# ============================================================================
+# Defines the target for loading
+# Accessed as: vars_instance.vars.output.table_id
+# table_id can be: table name, file path, database connection string, etc.
+#
+# Note: Use [default.output] for global output config, or [dev.output], [qa.output],
+# [prod.output] for environment-specific overrides.
+[default.output]
+# Target identifier (adjust to your target)
+# Example: "customers", "orders_processed", "/path/to/output", "jdbc:postgresql://..."
+# Silver table for SSF population data
+table_name = "tbl_silver_ssf_poblacion_subsidio_familiar_mensual"
+
+# Full target identifier using format strings
+# Example result: "local.default.example_target_table"
+#                 "/data/silver/customers"
+#                 "jdbc:postgresql://host:5432/db.table"
+table_id = "@format {this.dl_catalog}.{this.stage_db}.{this.output.table_name}"
+
+# Merge keys for merge operations (if using merge load strategy)
+# These columns are used as primary keys for merge operations
+# Accessed as: vars_instance.vars.output.merge_keys
+# Used in: load.py (if implementing merge operations)
+# Only add this if your flow uses merge strategy
+# Example: ["customer_id"], ["order_id", "line_item_id"], ["id", "version"]
+# merge_keys = ["id"]  # Uncomment and adjust if needed
+
+# ============================================================================
+# ADDITIONAL FLOW-SPECIFIC CONFIGURATION
+# ============================================================================
+# Add any additional configuration sections here based on your flow requirements.
+# Examples (add only if needed):
+#
+# [state_tracking]
+# # Configuration for state tracking (if needed)
+# # last_snapshot_tag = "@format {this.component_name}_last_snapshot"
+#
+# [incremental]
+# # Configuration for incremental processing (if needed)
+# # strategy = "snapshot" | "date_filter" | "custom"
+# # date_column = "updated_at"
+# # safety_interval = "10 MINUTES"
+#
+# [performance]
+# # Performance tuning (if needed)
+# # threshold_for_reprocessing = 0.1
+# # batch_size = 10000
+#
+# Note: Only add sections that your flow actually uses.
+# Don't add CDC, incremental, or other specific configurations unless required.
+
+# ============================================================================
+# RESTART CONFIGURATION (if needed)
+# ============================================================================
+# Only add this section if your flow requires restart capability.
+# Allows restarting the output by setting component flag to true
+# Accessed as: vars_instance.vars.restart.component_name
+# Used in: job.py (if restart functionality is implemented)
+#
+# [restart]
+# # Key name must match component_name from [default] section
+# # Set to true to restart on next run
+# # Example: If component_name = "example_flow", use:
+# # example_flow = false
+#
+# Note: Only add this section if your flow specifically requires restart functionality.
+
+# ============================================================================
+# CATALOG CONFIGURATION (Global)
+# ============================================================================
+# Catalog names for table operations (if using catalog-based systems)
+# Accessed as: vars_instance.vars.dl_catalog, vars_instance.vars.local_catalog
+# Used in: job.py, load.py (if using catalog-based storage systems)
+# Note: Not all storage systems use catalogs - adjust based on your system
+# These reference the values from [default] section above
+dl_catalog = "@format {this.dl_catalog}"
+local_catalog = "@format {this.local_catalog}"
+
+# ============================================================================
+# PARTITIONING CONFIGURATION (Global)
+# ============================================================================
+# Controls data partitioning during load operations (if applicable)
+# Accessed as: vars_instance.vars.num_partitions.min_global
+# Used in: load.py (if partitioning is supported by your storage system)
+[default.num_partitions]
+# Minimum number of partitions for data processing
+# Used when writing data (if partitioning is applicable)
+min_global = 10
+
+# Maximum number of partitions for data processing
+# Used for optimization and performance tuning (if applicable)
+max_global = 100
+
+# ============================================================================
+# ENVIRONMENT-SPECIFIC CONFIGURATION
+# ============================================================================
+# Dynaconf supports multiple environments. Variables in [default] are shared
+# across all environments. Variables in [dev], [qa], [prod] override defaults.
+#
+# How it works:
+# 1. [default] section: Variables shared across all environments
+# 2. [default.input], [default.output], etc.: Global nested sections
+# 3. [dev.input], [qa.input], [prod.input]: Override specific nested sections per environment
+# 4. Load with: get_vars_resource(env="dev", ...) or env="qa" or env="prod"
+#
+# IMPORTANT: Use nested sections like [default.input], [dev.input], [qa.input], [prod.input]
+# NOT standalone [input] sections, as Dynaconf doesn't parse standalone sections correctly.
+#
+# Note: The project's get_vars_resource uses "test" instead of "qa" by default.
+# If you need "qa", you may need to adjust the function or use "test" as the environment name.
+#
+# Example environment-specific overrides:
+# Use nested sections like [dev.input], [qa.input], [prod.input] for overrides
+[dev.input]
+# Development environment input overrides
+# Uncomment and adjust as needed
+# table_id = "@format {this.local_catalog}.dev_db.{this.input.table_name}"
+
+[dev.output]
+# Development environment output overrides
+# Uncomment and adjust as needed
+# table_id = "@format {this.local_catalog}.dev_db.{this.output.table_name}"
+
+[qa.input]
+# QA environment input overrides
+# Uncomment and adjust as needed
+# table_id = "@format {this.dl_catalog}.qa_db.{this.input.table_name}"
+
+[qa.output]
+# QA environment output overrides
+# Uncomment and adjust as needed
+# table_id = "@format {this.dl_catalog}.qa_db.{this.output.table_name}"
+
+[prod.input]
+# Production environment input overrides
+# Uncomment and adjust as needed
+# table_id = "@format {this.dl_catalog}.prod_db.{this.input.table_name}"
+
+[prod.output]
+# Production environment output overrides
+# Uncomment and adjust as needed
+# table_id = "@format {this.dl_catalog}.prod_db.{this.output.table_name}"
+
+# ============================================================================
+# ADDITIONAL RESOURCES
+# ============================================================================
+# - Dynaconf Documentation: https://www.dynaconf.com/
+# - Format Strings: https://www.dynaconf.com/configuration/#format-string
+# - Environment Variables: https://www.dynaconf.com/envvars/
+# - Environments: https://www.dynaconf.com/envs/
+# - Validation: https://www.dynaconf.com/validation/
+# - Settings Files: https://www.dynaconf.com/settings_files/
+#
+# Available utilities in this project:
+# - Iceberg utilities: demo_comfandi_project.libs.iceberg (if using Iceberg)
+# - Error handling: demo_comfandi_project.libs.error_handler
+# - Logging: demo_comfandi_project.libs.logging
+# - Resources: demo_comfandi_project.libs.resources

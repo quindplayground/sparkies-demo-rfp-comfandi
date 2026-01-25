@@ -1,0 +1,66 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+# NOTA: El campo 'name' se actualiza automáticamente por el script de setup
+name = "demo-comfandi-project"
+# TODO: Actualizar la descripción con información específica de tu proyecto
+description = "Template project for data processing with Apache Spark. Includes ETL pipelines, error handling, data validation, and data lake technologies."
+# TODO: Actualizar con los autores del proyecto
+authors = [
+    { name = "Your Name", email = "your.email@example.com" },
+]
+license = { file = "LICENSE" }
+readme = "README.md"
+requires-python = ">=3.11"
+dynamic = ["version", "dependencies"]
+# TODO: Actualizar con keywords relevantes para tu proyecto
+keywords = ["pyspark", "data-processing", "etl", "apache-spark"]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+# NOTA: El campo 'include' se actualiza automáticamente por el script de setup
+include = ["demo_comfandi_project", "demo_comfandi_project.*"]
+
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.txt"] }
+# NOTA: El campo 'attr' se actualiza automáticamente por el script de setup
+version = { attr = "demo_comfandi_project.__version__" }
+
+[tool.setuptools.package-data]
+# NOTA: El nombre del paquete se actualiza automáticamente por el script de setup
+"demo_comfandi_project" = ["*.toml", "**/*.toml"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+# NOTA: El campo 'testpaths' se actualiza automáticamente por el script de setup
+testpaths = ["demo_comfandi_project_tests"]
+addopts = ["--import-mode=importlib"]
+filterwarnings = ["ignore::DeprecationWarning", "ignore::UserWarning"]
+
+[tool.coverage.run]
+omit = [
+    '*/.local/*',
+    '__init__.py',
+    'tests/*',
+    '*/tests/*',
+    # NOTA: Esta ruta se actualiza automáticamente por el script de setup
+    '*/demo_comfandi_project_tests/*',
+    '.venv/*',
+    'venv/*',
+    "*/experimental/*",
+]
+
+[tool.coverage.report]
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "@(abc\\.)?abstractmethod",
+    "def __repr__",
+    "...",
+]

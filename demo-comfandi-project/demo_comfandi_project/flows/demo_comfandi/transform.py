@@ -84,23 +84,21 @@ def transform(
                 "job_id": job_id,
                 "input_table_id": input_table_id,
                 "output_table_id": output_table_id,
-                "input_rows": extracted_data.count(),
             }
         },
     )
 
-    # Step 1: Clean and normalize CCF field
-    # Trim, uppercase, and collapse spaces
-    step1 = extracted_data.withColumn(
-        "ccf",
-        sf.upper(sf.trim(sf.regexp_replace(sf.col("ccf"), r"\s+", " "))),
-    )
-
-    # Step 2: Cast types (ensure all are integers)
-    # a_o and mes should already be integers, but ensure it
-    # All metrics should be integers (non-negative)
-    step2 = (
-        step1.withColumn("a_o", sf.col("a_o").cast("int"))
+    # Optimize: Combine all transformations in a single pass to minimize shuffles
+    # Step 1-3: Clean CCF, cast types, and add metadata in one pass
+    transformed = (
+        extracted_data
+        # Clean and normalize CCF field (trim, uppercase, collapse spaces)
+        .withColumn(
+            "ccf",
+            sf.upper(sf.trim(sf.regexp_replace(sf.col("ccf"), r"\s+", " "))),
+        )
+        # Cast all numeric columns to int in one pass
+        .withColumn("a_o", sf.col("a_o").cast("int"))
         .withColumn("mes", sf.col("mes").cast("int"))
         .withColumn("empresas_afiliadas", sf.col("empresas_afiliadas").cast("int"))
         .withColumn("total_afiliados_cajas", sf.col("total_afiliados_cajas").cast("int"))
@@ -111,57 +109,55 @@ def transform(
         .withColumn("no_afiliados_con_derecho", sf.col("no_afiliados_con_derecho").cast("int"))
         .withColumn("personas_cargo_2", sf.col("personas_cargo_2").cast("int"))
         .withColumn("total_poblaci_n_cubierta", sf.col("total_poblaci_n_cubierta").cast("int"))
-    )
-
-    # Step 3: Add metadata columns
-    # year_month: YYYY-MM format for windowing operations
-    step3 = step2.withColumn(
-        "year_month",
-        sf.concat(
-            sf.col("a_o").cast("string"),
-            sf.lit("-"),
-            sf.lpad(sf.col("mes").cast("string"), 2, "0"),
-        ),
-    ).withColumn(
-        "ingestion_ts",
-        current_timestamp_with_tz("yyyy-MM-dd HH:mm:ss", "America/Bogota"),
-    ).withColumn("job_run_id", sf.lit(job_id))
-
-    # Step 4: Apply data quality checks and flags
-    # dq_is_valid_month: mes between 1 and 12
-    # dq_non_negative: all metrics >= 0
-    # dq_total_cubierta_consistente: total_poblaci_n_cubierta == total_afiliados_cajas + personas_cargo_2
-    # dq_key_not_null: a_o, mes, ccf are not null (critical for natural key)
-    step4 = step3.withColumn(
-        "dq_is_valid_month",
-        (sf.col("mes") >= 1) & (sf.col("mes") <= 12),
-    ).withColumn(
-        "dq_non_negative",
-        (sf.col("empresas_afiliadas") >= 0)
-        & (sf.col("total_afiliados_cajas") >= 0)
-        & (sf.col("trabajadores_afiliados") >= 0)
-        & (sf.col("afiliados_facultativos") >= 0)
-        & (sf.col("afiliados_pensionados") >= 0)
-        & (sf.col("afiliados_fidelidad") >= 0)
-        & (sf.col("no_afiliados_con_derecho") >= 0)
-        & (sf.col("personas_cargo_2") >= 0)
-        & (sf.col("total_poblaci_n_cubierta") >= 0),
-    ).withColumn(
-        "dq_total_cubierta_consistente",
-        sf.col("total_poblaci_n_cubierta")
-        == (sf.col("total_afiliados_cajas") + sf.col("personas_cargo_2")),
-    ).withColumn(
-        "dq_key_not_null",
-        sf.col("a_o").isNotNull()
-        & sf.col("mes").isNotNull()
-        & sf.col("ccf").isNotNull(),
+        # Add metadata columns
+        .withColumn(
+            "year_month",
+            sf.concat(
+                sf.col("a_o").cast("string"),
+                sf.lit("-"),
+                sf.lpad(sf.col("mes").cast("string"), 2, "0"),
+            ),
+        )
+        .withColumn(
+            "ingestion_ts",
+            current_timestamp_with_tz("yyyy-MM-dd HH:mm:ss", "America/Bogota"),
+        )
+        .withColumn("job_run_id", sf.lit(job_id))
+        # Step 4: Apply data quality checks and flags
+        .withColumn(
+            "dq_is_valid_month",
+            (sf.col("mes") >= 1) & (sf.col("mes") <= 12),
+        )
+        .withColumn(
+            "dq_non_negative",
+            (sf.col("empresas_afiliadas") >= 0)
+            & (sf.col("total_afiliados_cajas") >= 0)
+            & (sf.col("trabajadores_afiliados") >= 0)
+            & (sf.col("afiliados_facultativos") >= 0)
+            & (sf.col("afiliados_pensionados") >= 0)
+            & (sf.col("afiliados_fidelidad") >= 0)
+            & (sf.col("no_afiliados_con_derecho") >= 0)
+            & (sf.col("personas_cargo_2") >= 0)
+            & (sf.col("total_poblaci_n_cubierta") >= 0),
+        )
+        .withColumn(
+            "dq_total_cubierta_consistente",
+            sf.col("total_poblaci_n_cubierta")
+            == (sf.col("total_afiliados_cajas") + sf.col("personas_cargo_2")),
+        )
+        .withColumn(
+            "dq_key_not_null",
+            sf.col("a_o").isNotNull()
+            & sf.col("mes").isNotNull()
+            & sf.col("ccf").isNotNull(),
+        )
     )
 
     # Step 5: Deduplicate by natural key (a_o, mes, ccf)
-    # If duplicates exist, keep the record with the latest ingestion_ts
-    # Since we just added ingestion_ts, all will have the same timestamp
-    # So we use a deterministic approach: keep first occurrence
-    step5 = step4.dropDuplicates(["a_o", "mes", "ccf"])
+    # dropDuplicates internally optimizes partitioning, so no manual repartition needed
+    # If duplicates exist, keep the first occurrence (deterministic)
+    natural_key_cols = ["a_o", "mes", "ccf"]
+    result = transformed.dropDuplicates(natural_key_cols)
 
     logger.info(
         "Transformation completed",
@@ -170,9 +166,8 @@ def transform(
                 "job_id": job_id,
                 "input_table_id": input_table_id,
                 "output_table_id": output_table_id,
-                "output_rows": step5.count(),
             }
         },
     )
 
-    return step5
+    return result

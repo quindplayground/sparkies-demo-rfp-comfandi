@@ -1,0 +1,7 @@
+dynaconf~=3.2.10
+pydantic~=2.11.5
+awswrangler~=3.12.1
+boto3~=1.39.1
+boto3-stubs~=1.39.1
+boto3-stubs[essential]~=1.39.1
+requests~=2.31.0

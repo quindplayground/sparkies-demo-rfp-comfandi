@@ -211,6 +211,31 @@ def test_transform_deduplicates_by_natural_key(spark, mock_vars_resource):
     assert (2024, 2, "CCF002") in keys
     assert len(set(keys)) == 2
 
+    expected_schema = StructType(
+        [
+            StructField("a_o", IntegerType(), True),
+            StructField("mes", IntegerType(), True),
+            StructField("ccf", StringType(), True),
+            StructField("empresas_afiliadas", IntegerType(), True),
+            StructField("total_afiliados_cajas", IntegerType(), True),
+            StructField("trabajadores_afiliados", IntegerType(), True),
+            StructField("afiliados_facultativos", IntegerType(), True),
+            StructField("afiliados_pensionados", IntegerType(), True),
+            StructField("afiliados_fidelidad", IntegerType(), True),
+            StructField("no_afiliados_con_derecho", IntegerType(), True),
+            StructField("personas_cargo_2", IntegerType(), True),
+            StructField("total_poblaci_n_cubierta", IntegerType(), True),
+            StructField("year_month", StringType(), True),
+            StructField("ingestion_ts", TimestampType(), True),
+            StructField("job_run_id", StringType(), False),
+            StructField("dq_is_valid_month", BooleanType(), True),
+            StructField("dq_non_negative", BooleanType(), True),
+            StructField("dq_total_cubierta_consistente", BooleanType(), True),
+            StructField("dq_key_not_null", BooleanType(), False),
+        ]
+    )
+    assertSchemaEqual(result.schema, expected_schema)
+
 
 def test_transform_handles_empty_dataframe(spark, mock_vars_resource):
     """Test transformation with empty DataFrame."""
@@ -244,6 +269,31 @@ def test_transform_handles_empty_dataframe(spark, mock_vars_resource):
     assert "year_month" in result.columns
     assert "ingestion_ts" in result.columns
     assert "job_run_id" in result.columns
+
+    expected_schema = StructType(
+        [
+            StructField("a_o", IntegerType(), True),
+            StructField("mes", IntegerType(), True),
+            StructField("ccf", StringType(), True),
+            StructField("empresas_afiliadas", IntegerType(), True),
+            StructField("total_afiliados_cajas", IntegerType(), True),
+            StructField("trabajadores_afiliados", IntegerType(), True),
+            StructField("afiliados_facultativos", IntegerType(), True),
+            StructField("afiliados_pensionados", IntegerType(), True),
+            StructField("afiliados_fidelidad", IntegerType(), True),
+            StructField("no_afiliados_con_derecho", IntegerType(), True),
+            StructField("personas_cargo_2", IntegerType(), True),
+            StructField("total_poblaci_n_cubierta", IntegerType(), True),
+            StructField("year_month", StringType(), True),
+            StructField("ingestion_ts", TimestampType(), True),
+            StructField("job_run_id", StringType(), False),
+            StructField("dq_is_valid_month", BooleanType(), True),
+            StructField("dq_non_negative", BooleanType(), True),
+            StructField("dq_total_cubierta_consistente", BooleanType(), True),
+            StructField("dq_key_not_null", BooleanType(), False),
+        ]
+    )
+    assertSchemaEqual(result.schema, expected_schema)
 
 
 def test_transform_dq_total_cubierta_consistente(spark, mock_vars_resource):

@@ -55,7 +55,7 @@ def demo_comfandi_job(spark: SparkSession, vars_instance: VarsResource) -> Statu
         # Load configuration
         vars_instance = get_vars_resource(
             env="dev",
-            config_paths=["flows/your_flow_name/config/default.toml"]
+            config_paths=["flows/demo_comfandi/config/default.toml"]
         )
 
         # Execute job
@@ -66,13 +66,6 @@ def demo_comfandi_job(spark: SparkSession, vars_instance: VarsResource) -> Statu
         else:
             print(f"Job failed: {status.message}")
         ```
-
-    Note:
-        - Rename this function to match your flow name
-        - Update operation names in logging attributes
-        - Implement extract(), transform(), and load() functions
-        - Only add flow-specific logic (state tracking, change detection, etc.) if required
-        - Configure flow-specific settings in config/default.toml based on requirements
     """
     logger = get_logger(__name__)
 

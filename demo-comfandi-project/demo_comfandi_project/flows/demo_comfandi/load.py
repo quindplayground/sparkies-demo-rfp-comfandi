@@ -23,7 +23,7 @@ def load(
 ) -> None:
     """Load transformed data to target storage system using overwrite strategy.
 
-    This function implements loading logic for the SSF population data flow.
+    This function implements loading logic for the demo_comfandi data flow.
     It uses overwrite mode to replace all data in the target table, which is
     appropriate for this flow since:
     - The transform step already performs deduplication by natural key (a_o, mes, ccf)
@@ -48,6 +48,9 @@ def load(
     target_table_id = vars_instance.vars.output.table_id
     num_partitions = vars_instance.vars.num_partitions.min_global
 
+    # Count rows once before repartitioning for logging
+    input_rows = transformed_data.count()
+
     logger.info(
         "Loading data to target table",
         extra={
@@ -55,7 +58,7 @@ def load(
                 "job_id": job_id,
                 "target_table": target_table_id,
                 "load_strategy": "overwrite",
-                "input_rows": transformed_data.count(),
+                "input_rows": input_rows,
                 "num_partitions": num_partitions,
             }
         },
@@ -77,7 +80,7 @@ def load(
                 "job_id": job_id,
                 "target_table": target_table_id,
                 "load_strategy": "overwrite",
-                "rows_loaded": data_to_load.count(),
+                "rows_loaded": input_rows,
             }
         },
     )
